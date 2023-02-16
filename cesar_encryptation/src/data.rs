@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-/// This array (in the future a HashMap) contains the English's language
-/// frequency analysis that will be used to associed its values to the ones
+/// This array (in the future a Vector) contains the English's language
+/// frequency analysis that will be used to associate its values to the ones
 /// retrieved from the resulting frequency analysis over the encripted text
 /// passed to the program
 const LETTERS_FREQ: [(char, f64); 26] = [
@@ -13,74 +13,95 @@ const LETTERS_FREQ: [(char, f64); 26] = [
 	('Q', 0.1962)
 ];
 
+/// This structs represents an analizer process over some encrypted text
+/// passed to the program.
 ///
+/// It's important to keep in mind that it is build over the context of the
+/// problem in resolution, so you may only expect a valid result from this program,
+/// if you are actually working with data that fits the context of the dilema.
 pub struct Analizer {
-	_eng_freqs: Vec<(char, f64)>
+	_eng_freq: Vec<(char, f64)>
 }
 
 impl Analizer {
-	/// Createso a new `Analizer` instance
+	/// Creates a new `Analizer` instance.
 	pub fn new() -> Self {
 		Self {
-			_eng_freqs: Vec::from(LETTERS_FREQ)
+			_eng_freq: Vec::from(LETTERS_FREQ)
 		}
 	}
 
+	/// Retrieves the vector containing the `English`'s frequency analysis values.
 	pub fn get_english_freqs(&self) -> &Vec<(char, f64)> {
-		&self._eng_freqs
+		&self._eng_freq
 	}
 
-	pub fn calculate_frequency<'a>(&self, text: &'a[char]) -> BTreeMap<&'a char, f64> {
+	/// Determines the frequency of each character inside a given text.
+	pub fn calculate_frequency<'a>(
+		&self,
+		text_chars: &'a [char]
+	) -> Vec<(&'a char, f64)>
+	{
 		let mut freq: BTreeMap<&'a char, f64> = BTreeMap::new();
 
 		// here, we iterate over the given text to determine how many times
 		// each character is inside it
-		for c in text {
-			let n = freq.entry(c).or_insert(0.0);
-			*n += 1.0;
-		}
+		for c in text_chars.iter() { *freq.entry(c).or_insert(0.0) += 1.0; }
 
-		// then, we calculate the frequency of each character with the formula
+		// then, we calculate the frequency of each character with the formula:
 		// f = c / l
 		// where:
 		// f = frequency
 		// c = character
 		// l = length of the text
-		let text_len = text.len();
+		let text_len = text_chars.len();
 		for (_, f) in freq.iter_mut() {
 			*f = *f / text_len as f64;
 		}
 
-		freq
-	}
-
-	pub fn associate_frequency<'a, 'b>(
-		&'a self,
-		freq: &'b BTreeMap<&'a char, f64>
-	) -> BTreeMap<&'a char, &'b char> {
-		// here, we are sorting the values of the frequencies HashMap by value
-		// to later associate its values with the english's frequency table
+		// finally, the BTreeMap is converted to a vector sorted vector.
 		let mut freq_vec: Vec<_> = freq.into_iter().collect();
 		freq_vec.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
 		freq_vec.reverse();
 
-		let freq: BTreeMap<_, _> = freq_vec.into_iter().collect();
+		freq_vec
+	}
+
+	/// Associates the a given text's frequency with the frequency given by the
+	/// `English`'s language frequency analysis.
+	pub fn associate_frequency<'a, 'b>(
+		&'a self,
+		text: &str,
+		freq: &'b [(&'a char, f64)]
+	) -> Vec<(&'a char, &'b char)>
+	{
+		let mut eng_freq_iter = self._eng_freq.iter();
 
 		freq
 			.into_iter()
-			.enumerate()
-			.map(|(i, (k, _))| {
-				(*k, &self._eng_freqs[i].0)
-			}).
-			collect()
+			.filter(|(_, f)| *f != 1.0 / text.len() as f64)
+			.map(|(c, _)| {
+				(*c, &eng_freq_iter.next().unwrap().0)
+			})
+		.collect()
 	}
 
-	pub fn assemble_result(&self, parts: &[&char]) -> String {
-		let mut result = String::with_capacity(parts.len());
-		for c in parts {
-			result.push(**c)
-		}
-		result
+	pub fn assemble_result(
+		&self,
+		text: &str,
+		text_association: &[(&char, &char)]) -> String
+	{
+		let mut txt_ass_iter = text_association.iter();
+		text
+			.chars()
+			.map(|a| {
+				let res = txt_ass_iter.find(|(&b, _)| b == a);
+				match res {
+					Some(pair) => *pair.1,
+					None => a,
+				}
+			})
+		.collect()
 	}
 }
 
@@ -93,9 +114,8 @@ mod tests {
 		let analizer: Analizer = Analizer::new();
 		let eng_freqs = analizer.get_english_freqs();
 
-		assert_eq!(&analizer._eng_freqs, eng_freqs)
+		assert_eq!(&analizer._eng_freq, eng_freqs)
 	}
-
 	#[test]
 	fn frequency_is_calculated() {
 		let analizer: Analizer = Analizer::new();
@@ -116,13 +136,10 @@ mod tests {
 	fn result_is_propertly_assembled() {
 		let analizer: Analizer = Analizer::new();
 		let text = String::from("TEBKFKQEBZLROPBLCERJXKBSBKQP");
-
-		let chars = &text.chars().collect::<Vec<_>>();
-		let freq = analizer.calculate_frequency(chars);
-		let ass_freqs = analizer.associate_frequency(&freq);
-
-		let vals: Vec<_> = ass_freqs.into_values().collect();
-		let res = analizer.assemble_result(&vals);
+		let text_chars: Vec<_> = text.chars().collect();
+		let freq = analizer.calculate_frequency(&text_chars);
+		let ass_freqs = analizer.associate_frequency(&text, &freq);
+		let res = analizer.assemble_result(&text, &ass_freqs);
 
 		assert_eq!(res, String::from("ABC"))
 	}
