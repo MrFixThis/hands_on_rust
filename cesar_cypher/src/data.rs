@@ -1,4 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
+
+use aho_corasick::AhoCorasick;
 
 /// This array (in the future a Vector) contains the English's language
 /// frequency analysis that will be used to associate its values to the ones
@@ -42,7 +44,7 @@ impl Analizer {
 		text_chars: &'a [char]
 	) -> Vec<(&'a char, f64)>
 	{
-		let mut freq: BTreeMap<&'a char, f64> = BTreeMap::new();
+		let mut freq: HashMap<&'a char, f64> = HashMap::new();
 
 		// here, we iterate over the given text to determine how many times
 		// each character is inside it
@@ -76,32 +78,45 @@ impl Analizer {
 	) -> Vec<(&'a char, &'b char)>
 	{
 		let mut eng_freq_iter = self._eng_freq.iter();
-
+		let mut eng_freq_item = eng_freq_iter.next().unwrap();
+		let mut prev_val = &freq[0].1;
 		freq
 			.into_iter()
-			.filter(|(_, f)| *f != 1.0 / text.len() as f64)
-			.map(|(c, _)| {
-				(*c, &eng_freq_iter.next().unwrap().0)
+			.map(|(c, f)| {
+				match *f {
+					n if n != 1.0 / text.len() as f64 => {
+						if prev_val != f {
+							eng_freq_item = eng_freq_iter.next().unwrap();
+						}
+						prev_val = f;
+						(*c, &eng_freq_item.0)
+					},
+					_ => (*c, &'?')
+				}
 			})
 		.collect()
 	}
 
+	/// Assembles a result by replacing, over the original text, all the
+	/// corresponding characters from a previos association to the `English`'s
+	/// frequency analysis.
 	pub fn assemble_result(
 		&self,
 		text: &str,
 		text_association: &[(&char, &char)]) -> String
 	{
-		let mut txt_ass_iter = text_association.iter();
-		text
-			.chars()
-			.map(|a| {
-				let res = txt_ass_iter.find(|(&b, _)| b == a);
-				match res {
-					Some(pair) => *pair.1,
-					None => a,
-				}
-			})
-		.collect()
+		let patterns: Vec<_> = text_association
+			.iter()
+			.map(|(&c, _)| c.to_string())
+			.collect();
+
+		let replacement: Vec<_> = text_association
+			.iter()
+			.map(|(_, &c)| c.to_string())
+			.collect();
+
+		let ac = AhoCorasick::new(&patterns);
+		ac.replace_all(text, &replacement)
 	}
 }
 
@@ -138,7 +153,10 @@ mod tests {
 		let text = String::from("TEBKFKQEBZLROPBLCERJXKBSBKQP");
 		let text_chars: Vec<_> = text.chars().collect();
 		let freq = analizer.calculate_frequency(&text_chars);
+		println!("{freq:?}");
 		let ass_freqs = analizer.associate_frequency(&text, &freq);
+		println!("{ass_freqs:?}");
+
 		let res = analizer.assemble_result(&text, &ass_freqs);
 
 		assert_eq!(res, String::from("ABC"))

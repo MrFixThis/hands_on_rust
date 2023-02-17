@@ -1,10 +1,10 @@
 mod data;
-mod report;
+mod output;
 
-use std::{env, io::{self, ErrorKind}};
+use std::{env, io::{self, ErrorKind, Write}};
 
 use data::Analizer;
-use report::Logger;
+use output::Logger;
 
 pub struct App {
 	analizer: Analizer,
@@ -28,19 +28,21 @@ impl App {
 		let arg_ass = self.analizer.associate_frequency(&arg, &arg_freq);
 		let result = self.analizer.assemble_result(&arg, &arg_ass);
 
-		println!("{}",
+		io::stdout().lock().write_all(
 			self.logger.format_report(
 				&arg,
 				&result,
 				&eng_freq,
 				&arg_freq,
 				&arg_ass
-			)
-		);
+			).as_bytes()
+		)?;
 
 		Ok(())
 	}
 
+	/// Retrieves the arguments passed to the program and ensures that
+	/// those are valid for the application.
 	fn get_arg() -> Result<String, io::Error> {
 		// using args_os to avoid a possible panic
 		let cmd_args: Vec<_> = env::args_os().collect();
@@ -58,21 +60,19 @@ impl App {
 				)
 			},
 			n => {
-				if n == 1 {
-					Err(
-						io::Error::new(
-							ErrorKind::InvalidData,
-							"missing argument. specify any valid value"
-						)
+				let err = if n == 1 {
+					io::Error::new(
+						ErrorKind::InvalidData,
+						"missing argument. specify any valid value"
 					)
 				} else {
-					Err(
-						io::Error::new(
-							ErrorKind::InvalidInput,
-							"too many arguments. check your input data"
-						)
+					io::Error::new(
+						ErrorKind::InvalidInput,
+						"too many arguments. check your input data"
 					)
-				}
+				};
+
+				Err(err)
 			}
 		}
 	}
