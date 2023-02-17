@@ -13,7 +13,7 @@ const LETTERS_FREQ: [(char, f64); 26] = [
 	('Q', 0.1962)
 ];
 
-/// This structs represents an analizer process over some encrypted text
+/// This structs represents an analizer process over some cyphered text
 /// passed to the program.
 ///
 /// It's important to keep in mind that it is build over the context of the

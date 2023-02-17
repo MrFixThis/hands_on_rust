@@ -1,5 +1,5 @@
 use std::io;
-use cesar_encryptation::App;
+use cesar_cypher::App;
 
 
 fn main() -> Result<(), io::Error>{
