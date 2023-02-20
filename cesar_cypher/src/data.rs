@@ -21,6 +21,7 @@ const LETTERS_FREQ: [(char, f64); 26] = [
 /// It's important to keep in mind that it is build over the context of the
 /// problem in resolution, so you may only expect a valid result from this program,
 /// if you are actually working with data that fits the context of the dilema.
+#[derive(Debug)]
 pub struct Analizer {
 	_eng_freq: Vec<(char, f64)>
 }
