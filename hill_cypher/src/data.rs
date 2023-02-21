@@ -29,10 +29,6 @@ pub enum Command {
 		#[structopt(short, long)]
 		source: String,
 
-		/// Dimension of the key's representation matrix
-		#[structopt(short, long, required_unless("namespace"))]
-		dimension: Option<usize>,
-
 		/// Key's and source text's fill letter for the case where
 		/// dimension^2 != source's length
 		#[structopt(short, long)]
@@ -49,7 +45,7 @@ pub enum Command {
 		#[structopt(short, long)]
 		key: String,
 
-		/// Source text to decypher
+		/// Cyphered source text
 		#[structopt(short, long)]
 		source: String,
 
@@ -57,7 +53,7 @@ pub enum Command {
 		#[structopt(short, long)]
 		fill_letter: Option<char>,
 
-		/// Known namespace used to cypher the source cyphered text
+		/// Known namespace used to cypher the cyphered source text
 		#[structopt(short, long)]
 		namespace: Option<String>
 	}
