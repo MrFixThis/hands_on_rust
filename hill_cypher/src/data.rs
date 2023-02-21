@@ -58,23 +58,3 @@ pub enum Command {
 		namespace: Option<String>
 	}
 }
-
-// #[cfg(test)]
-// mod tests {
-// 	use super::*;
-//
-// 	#[test]
-// 	fn arg_parser_takes_input() {
-// 		let t_args = vec![
-// 			// "hill_cypher", // program's name
-// 			// "cypher",
-// 			// "-h"
-// 			// "-k my_test_key",
-// 			// "-s my_test_source_text",
-// 		];
-//
-// 		let args = Args::from_iter(t_args.iter());
-// 		println!("{args:?}");
-// 	}
-// }
-

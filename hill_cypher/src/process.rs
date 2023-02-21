@@ -3,9 +3,8 @@ use rulinalg::matrix::{Matrix, BaseMatrix};
 
 use crate::error::Result;
 
-/// This constant array refers to the default namespace used by the `cypher` and
-/// `decypher` algorithms to do its work. This value is obscured if a `custom
-/// namespace` is specified.
+/// Default namespace used by the `cypher` and `decypher` algorithms to do its
+/// work. This value is obscured if a `custom namespace` is specified.
 pub const DEFAULT_NAMESPACE: [char; 27] = [
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
 	'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' '
@@ -13,7 +12,7 @@ pub const DEFAULT_NAMESPACE: [char; 27] = [
 
 /// A `Cypher` and `Decypher` processor.
 ///
-/// This struct exposes the application's cypher and decypher capabilities
+/// The processor exposes the application's cypher and decypher capabilities
 /// based on the `Hill's Method` cypher.
 #[derive(Debug, Default, Builder)]
 pub struct Processor<'a> {
@@ -25,14 +24,15 @@ pub struct Processor<'a> {
 
 impl Processor<'_> {
 	/// Cyphers the given `source text` based on the information passed
-	/// to the program, like a `key`, a `fill letter` or a `custom namespace`.
+	/// to the program, like a `key`, a `fill letter` or a possibe
+	/// `custom namespace`.
 	pub fn cypher(&self) -> Result<String> {
 		// definition of which namespace to use: either the user supplied
 		// namespace or the default one
 		let namespace: Vec<_> = match self.name_space {
 			Some(ns) => {
 				let ns_len = ns.len();
-				if ns_len < 27 || !is_square(ns.len()) {
+				if ns_len < DEFAULT_NAMESPACE.len() || !is_square(ns.len()) {
 					return Err(
 						format!(
 							"the suplied namespace has to have a square length >= 27",
@@ -45,23 +45,28 @@ impl Processor<'_> {
 		};
 
 		// Checking the validness of the user suplied info
-		chek_information(self.key, self.source, self.fill_letter, &namespace)?;
+		self.chek_information(&namespace)?;
 
-		// cheking if the key's length is square. If it is not, the
+		// cheking if the key's length is square. If it is not, then the
 		// key is filled
-		let key = if !is_square(self.key.len()) {
-			fill_key(self.key, self.fill_letter.unwrap())?.to_uppercase()
+		let kl = self.key.len();
+		let key = if !is_square(kl) {
+			fill_txt(self.key, self.fill_letter.unwrap(), turn_perfect_sqrt(kl), kl)
 		} else {
 			self.key.to_uppercase()
 		};
 
-		// getting the key's length
+		// getting the checked key's length square root
 		let dimension = (key.len() as f64).sqrt() as usize;
 
-		// cheking if the source text's length is divisible by the dimension.
-		// If it is not, the text is filled
+		// cheking if the source text's length is divisible by the above dimension.
+		// If it is not, the the text is filled
+		let sl = self.source.len();
 		let source = if !is_divisble(self.source.len(), &dimension) {
-			fill_src(self.source, self.fill_letter.unwrap(), &dimension)?
+			fill_txt(
+				self.source,
+				self.fill_letter.unwrap(),
+				turn_divisible(sl, &dimension), sl)
 		} else {
 			self.source.to_uppercase()
 		};
@@ -92,12 +97,48 @@ impl Processor<'_> {
 			&source, &namespace)?;
 
 		// turning the cyphered_parts into its textual representation
-		Ok(cypher_src_mtrx(
-				&key_mtrx,
-				src_mtrx,
-				&namespace
-			)
-		)
+		Ok(translate_txt_mtrx(&key_mtrx, src_mtrx, &namespace))
+	}
+
+	// /// Decyphers the given `cyphered text` based on the information passed
+	// /// to the program, like the known `key`, or a possible known `fill letter`
+	// /// and a `custom namespace` used in the `cypher` process.
+	// pub fn decypher(&self) -> Result<String> {
+	//
+	// }
+
+	/// Cheks the validness of the user supplied information. If something went
+	/// wrong in the cheking, (ProcessingError)[Error::ProcessingError] is returned.
+	fn chek_information(&self, namespace: &[char]) -> Result<()> {
+		// cheking if the supplied fill character is inside the namespace
+		if let Some(f) = self.fill_letter {
+			Self::is_in_namespace(f, &namespace)?;
+		}
+
+		// cheking if the supplied key and source text have an unkwnon character
+		let mut target = self.key;
+		for _ in 0..2 {
+			for c in target.chars() {
+				Self::is_in_namespace(&c, &namespace)?;
+			}
+			target = self.source;
+		}
+
+		Ok(())
+	}
+
+	/// Checks if the supplied `character` is inside the given namespace; if it
+	/// is not, (ProcessingError)[Error::ProcessingError] is returned.
+	fn is_in_namespace(char: &char, namespace: &[char]) -> Result<()> {
+		if namespace.into_iter().find(|&c| *c == *char) == None {
+			return Err(
+				format!(
+					"the character '{char}' is not present in the namespace"
+				).into()
+			);
+		}
+
+		Ok(())
 	}
 }
 
@@ -109,8 +150,9 @@ impl Processor<'_> {
 // }
 
 /// Turns a given (Matrix)[rulinalg::matrix::Matrix] filled with the positions
-/// of each character of a `source text`, into its textual representations.
-fn cypher_src_mtrx(
+/// of each character of a passed `text`, into its textual representations
+/// inside the supplied namespace.
+fn translate_txt_mtrx(
 	key_mtrx: &Matrix<f64>,
 	src_mtrx: Matrix<f64>,
 	namespace: &[char]
@@ -124,13 +166,12 @@ fn cypher_src_mtrx(
 		.collect()
 }
 
-/// Splits the given `source text` into as many parts as the given `dimension`
-/// and turns its values into its respective representation inside the
-/// namespace specified, and stores it inside a
-/// (Matrix)[rulinalg::matrix::Matrix].
+/// Splits a given `text` into its numeric representations inside the namespace
+/// specified, and stores it inside a (Matrix)[rulinalg::matrix::Matrix] with
+/// `rows` x `cols` dimension.
 fn txt_mtrx_repr(
-	width: usize,
-	height: usize,
+	rows: usize,
+	cols: usize,
 	src: &str,
 	namespace: &[char]
 ) -> Result<Matrix<f64>>
@@ -140,26 +181,11 @@ fn txt_mtrx_repr(
 		.map(|c| char_pos(&c, namespace) as f64)
 		.collect();
 
-	Ok(Matrix::new(width, height, parts).transpose())
-}
-
-/// Fills a given `key` that has not a square length with a specified
-/// character that is present in the namespace.
-fn fill_key(key: &str, char: &char) -> Result<String> {
-	let key_len = key.len();
-	Ok(fill_text(key, char, turn_perfect_sqrt(key_len), key_len))
-}
-
-/// Fills a given `source text` that has not a divisble length by
-/// the `keys`'s `dimension` with a specified character that is present
-/// in the namespace.
-fn fill_src(src: &str, char: &char, key_dim: &usize) -> Result<String> {
-	let src_len = src.len();
-	Ok(fill_text(src, char, turn_divisible(src_len, key_dim), src_len))
+	Ok(Matrix::new(rows, cols, parts).transpose())
 }
 
 /// Fills a given `text` with a specified character (a - b) times.
-fn fill_text(txt: &str, char: &char, a: usize, b: usize) -> String {
+fn fill_txt(txt: &str, char: &char, a: usize, b: usize) -> String {
 	let reps = a - b;
 
 	if reps != 0 {
@@ -168,46 +194,6 @@ fn fill_text(txt: &str, char: &char, a: usize, b: usize) -> String {
 	} else {
 		txt.to_owned()
 	}
-}
-
-/// Cheks the validness of the user supplied information. If something went
-/// wrong in the cheking, (ProcessingError)[Error::ProcessingError] is returned.
-fn chek_information(
-	key: &str,
-	src: &str,
-	fill: Option<&char>,
-	namespace: &[char]
-) -> Result<()>
-{
-	// cheking if the supplied fill character is inside the namespace
-	if let Some(f) = fill {
-		is_in_namespace(f, &namespace)?;
-	}
-
-	// cheking if the supplied key and source text have an unkwnon character
-	let mut target = key;
-	for _ in 0..2 {
-		for c in target.chars() {
-			is_in_namespace(&c, &namespace)?;
-		}
-		target = src;
-	}
-
-	Ok(())
-}
-
-/// Checks if the supplied `character` is inside the given namespace; if it
-/// is not, (ProcessingError)[Error::ProcessingError] is returned.
-fn is_in_namespace(char: &char, namespace: &[char]) -> Result<()> {
-	if namespace.into_iter().find(|&c| *c == *char) == None {
-		return Err(
-			format!(
-				"the character '{char}' is not present in the namespace"
-			).into()
-		);
-	}
-
-	Ok(())
 }
 
 /// Retrives the given character's `position` inside the namespace specified.
@@ -267,44 +253,29 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn information_is_checked_as_valid() {
-		let key = "TUNA";
-		let src = "CODEINSIDE";
-		let fill = Some(&'L');
-		let namespace = &DEFAULT_NAMESPACE;
-
-		assert!(!chek_information(&key, &src, fill, namespace).is_err());
-	}
-
-	#[test]
-	fn information_is_checked_as_invalid() {
-		let key = "TUNA232323";
-		let src = "@CODEINSIDE.";
-		let fill = Some(&'L');
-		let namespace = &DEFAULT_NAMESPACE;
-
-		assert!(chek_information(&key, &src, fill, namespace).is_err());
-	}
-
-	#[test]
 	fn key_with_not_square_length_is_filled() {
-		let src = "ABCDE".to_owned();
+		let key = "ABCDE".to_owned();
+		let kl = key.len();
 		let fill_char = 'L';
 
 		assert_eq!(
-			fill_key(&src, &fill_char).unwrap(),
+			fill_txt(&key, &fill_char, turn_perfect_sqrt(kl), kl),
 			"ABCDELLLL"
 		);
 	}
 
 	#[test]
-	fn text_with_not_divisible_length_is_filled() {
+	fn source_text_with_not_divisible_length_is_filled() {
 		let key = "ABCDEFGHI";
 		let key_dim = (key.len() as f64).sqrt() as usize;
 		let src = "ABCD".to_owned();
+		let sl = src.len();
 		let fill_char = 'E';
 
-		assert_eq!(fill_src(&src, &fill_char, &key_dim).unwrap(), "ABCDEE");
+		assert_eq!(
+			fill_txt(&src, &fill_char, turn_divisible(sl, &key_dim), sl),
+			"ABCDEE"
+		);
 	}
 
 	#[test]
@@ -348,8 +319,11 @@ mod tests {
 		let src_mtrx = txt_mtrx_repr(src.len()/dim, dim, &src, namespace).unwrap();
 
 		assert_eq!(
-			cypher_src_mtrx(&key_mtrx, src_mtrx, namespace),
+			translate_txt_mtrx(&key_mtrx, src_mtrx, namespace),
 			String::from("WLPGSE")
 		);
 	}
+
+	//TODO: Build the test for the whole cypher and decypher processes
+	//checking the validness of the input info
 }
