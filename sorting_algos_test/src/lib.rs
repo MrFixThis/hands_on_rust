@@ -1,6 +1,6 @@
 #![feature(is_sorted)]
 
-use std::fmt::Debug;
+use std::{fmt::Debug, marker::PhantomData, cmp::Ordering};
 
 use binary_search_tree::BinarySearchTree;
 use rand::{rngs::ThreadRng, Rng, distributions::Standard, prelude::Distribution};
@@ -16,37 +16,37 @@ use rayon::prelude::*;
 /// - Cocktail sort
 /// - Tree sort
 ///
-/// `Note`: Those implementations are meant to ***test*** its efficiency at
+/// `Note`: Those implementations are meant to ***test*** its efficiency in
+/// its *best*, *worst* and *averange* cases at
 /// sorting a [`Vec`]
-/// with a variatic length, filled with arbitrary random numbers.
+/// with a variatic length, filled with arbitrary numbers with the next
+/// characteristics:
+///
+/// - Sorted in a ascending manner **(best case)**
+/// - Completly shuffled **(averange case)**
+/// - Sorted in a descending manner **(worst case)**
+///
+/// On the other hand, is good to know that this implementations are neither
+/// the most optimized nor robust ones.
 #[derive(Debug)]
-pub struct SortingAlgorithm {
-	rng_gen: ThreadRng
-}
+pub struct SortingAlgorithm;
 
 impl SortingAlgorithm {
-	/// Creates a new `SortingAlgorithm` instance with a lazily-initialized
-	/// thread-local random number generator.
-	/// See [`ThreadRng`] for details.
-	pub fn new() -> Self {
-		Self { rng_gen: rand::thread_rng() }
-	}
-
 	/// The *Divide and Conquer* `Quicksort` algorithm implementation.
 	/// `Note`: This implementation sorts the collection in-place.
 	/// `Note`: This implemention takes as `pivot` the last element in the
 	/// collection.
-	pub fn quicksort<T>(&self, coll: &mut [T])
+	pub fn quicksort<T>(coll: &mut [T])
 		where T: PartialOrd + Debug
 	{
 		if coll.len() == 0 { panic!("quicksort: the collection is empty") }
 
-		self._quicksort(coll, 0, (coll.len() - 1) as isize);
+		Self::_quicksort(coll, 0, (coll.len() - 1) as isize);
 	}
 
 	/// The *Sub-routine based* `Radix sort` algorithm implementation.
 	/// `Note`: This implementation does not sort the collection in-place.
-	pub fn radix_sort(&self, coll: &mut [u8]) {
+	pub fn radix_sort(coll: &mut [u8]) {
 		// getting the most significant value
 		// to know the number of elements
 		 let max = match coll.par_iter().max() {
@@ -85,7 +85,7 @@ impl SortingAlgorithm {
 
 	/// The *Linear* `Cocktail sort` algorithm implementation.
 	/// `Note`: This implementation sorts the collection in-place.
-	pub fn cocktail_sort<T>(&self, coll: &mut [T])
+	pub fn cocktail_sort<T>(coll: &mut [T])
 		where
 			T: PartialOrd + Debug
 	{
@@ -116,7 +116,7 @@ impl SortingAlgorithm {
 
 	/// The *Divide and Conquer* `Tree sort` algorithm implementation.
 	/// `Note`: This implementation does not sort the collection in-place.
-	pub fn tree_sort<'a, T>(&self, coll: &'a [T]) -> Vec<&'a T>
+	pub fn tree_sort<T>(coll: &[T]) -> Vec<&T>
 		where
 			T: PartialOrd + Ord + Debug,
 	{
@@ -130,21 +130,8 @@ impl SortingAlgorithm {
 		bst.into_sorted_vec()
 	}
 
-	/// Creates a new [`Vec`]
-	/// filled with an specified `amount` of random numbers.
-	/// `Note`: The resulting vector is meant to test
-	/// the sorting efficiency of the above algorithm.
-	pub fn build_vec<T>(&mut self, amont: usize) -> Vec<T>
-		where
-			Standard: Distribution<T>
-	{
-		(0..amont)
-			.map(|_| self.rng_gen.gen())
-			.collect()
-	}
-
 	/// A [`SortingAlgorithm`]'s quicksort function helper.
-	fn _quicksort<T>(&self, vec: &mut [T], low: isize, high: isize)
+	fn _quicksort<T>(vec: &mut [T], low: isize, high: isize)
 		where
 			T: PartialOrd
 	{
@@ -153,9 +140,9 @@ impl SortingAlgorithm {
 			let partition_idx = Self::_partition(vec, 0, high);
 
 			// left half
-			self._quicksort(vec, low, partition_idx - 1);
+			Self::_quicksort(vec, low, partition_idx - 1);
 			// right half
-			self._quicksort(vec, partition_idx + 1, high);
+			Self::_quicksort(vec, partition_idx + 1, high);
 		}
 	}
 
@@ -203,43 +190,95 @@ impl SortingAlgorithm {
 	}
 }
 
+/// A `test vector generator`.
+///
+/// This generator crates three kinds of container vectors:
+///
+/// - A vector with elements sorted in an ascending manner.
+/// - A vector with elements completly shuffled.
+/// - A vector with elements sorted in a descending manner.
+///
+/// `Note`: The resulting vector is meant to test
+/// the sorting efficiency of the above algorithms.
+#[derive(Debug)]
+pub struct Generator<T> {
+	rng_gen: ThreadRng,
+	_marker: PhantomData<T>
+}
+
+impl<T> Generator<T>
+	where
+		Standard: Distribution<T>,
+		T: PartialOrd + Ord
+{
+	/// Creates a new `Generator` instance with a lazily-initialized
+	/// thread-local random number generator.
+	/// See [`ThreadRng`] for details.
+	pub fn new() -> Self {
+		Self {
+			rng_gen: rand::thread_rng(),
+			_marker: PhantomData,
+		}
+	}
+
+	/// Creates a new [`Vec`]
+	/// filled with an specified `amount` of numbers organized either in an
+	/// `ascending` or `descending` manner.
+	pub fn gen_organized_vec<F>(&mut self, amount: usize, f: F) -> Vec<T>
+		where
+			F: FnMut(&T, &T) -> Ordering
+	{
+		let mut vec: Vec<T> = self.gen_shuffled_vec(amount);
+		vec.sort_by(f);
+		vec
+	}
+
+	/// Creates a new [`Vec`]
+	/// filled with an specified `amount` of numbers completly shuffled.
+	pub fn gen_shuffled_vec(&mut self, amount: usize) -> Vec<T> {
+		(1..=amount)
+			.map(|_| self.rng_gen.gen())
+			.collect()
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
 
 	#[test]
 	fn quicksort_sorts_random_collection() {
-		let mut set = SortingAlgorithm::new();
-		let mut vec: Vec<i8> = set.build_vec(6745);
+		let mut gen = Generator::new();
+		let mut vec: Vec<i8> = gen.gen_shuffled_vec(6745);
 
-		set.quicksort(&mut vec);
+		SortingAlgorithm::quicksort(&mut vec);
 		assert!(vec.is_sorted());
 	}
 
 	#[test]
 	fn radix_sort_sorts_random_collection() {
-		let mut set = SortingAlgorithm::new();
-		let mut vec: Vec<u8> = set.build_vec(4345);
+		let mut gen = Generator::new();
+		let mut vec: Vec<u8> = gen.gen_shuffled_vec(4345);
 
-		set.radix_sort(&mut vec);
+		SortingAlgorithm::radix_sort(&mut vec);
 		assert!(vec.is_sorted());
 	}
 
 	#[test]
 	fn cocktail_sort_sorts_random_collection() {
-		let mut set = SortingAlgorithm::new();
-		let mut vec: Vec<i8> = set.build_vec(2131);
+		let mut gen = Generator::new();
+		let mut vec: Vec<i8> = gen.gen_shuffled_vec(2131);
 
-		set.cocktail_sort(&mut vec);
+		SortingAlgorithm::cocktail_sort(&mut vec);
 		assert!(vec.is_sorted());
 	}
 
 	#[test]
 	fn tree_sort_sorts_random_collection() {
-		let mut set = SortingAlgorithm::new();
-		let vec: Vec<i8> = set.build_vec(3764);
+		let mut gen = Generator::new();
+		let vec: Vec<i8> = gen.gen_shuffled_vec(3764);
 
-		let sorted_vec = set.tree_sort(&vec);
+		let sorted_vec = SortingAlgorithm::tree_sort(&vec);
 		assert!(sorted_vec.is_sorted());
 	}
 }

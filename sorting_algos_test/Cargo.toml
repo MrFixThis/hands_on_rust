@@ -14,5 +14,13 @@ binary_search_tree = "0.2.2"
 criterion = "0.3"
 
 [[bench]]
-name = "sorting_benches"
+name = "best_case_benches"
+harness = false
+
+[[bench]]
+name = "averange_case_benches"
+harness = false
+
+[[bench]]
+name = "worst_case_benches"
 harness = false
