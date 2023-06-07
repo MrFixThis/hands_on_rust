@@ -17,7 +17,7 @@ pub struct TuiArgs {
 
 #[derive(Debug, StructOpt)]
 pub enum SubCmds {
-    /// Discover the optimal meal menu based on a spcified number of calories and a base menu.
+    /// Discover the optimal meal menu based on a specified number of calories and a base menu.
     MenuOptimizer {
         /// Number of calories to meet with the optimal meal menu being generated.
         #[structopt(short, long, required = true)]
@@ -33,7 +33,7 @@ pub enum SubCmds {
             parse(try_from_str = parse_key_value_pair),
             min_values  = 2
         )]
-        dishes: Vec<(String, u32)>,
+        base_menu: Vec<(String, u32)>,
     },
 
     /// Determines the most prefered arbiters by an `N` number of teams and assigned to an `M (N/2)`
@@ -41,11 +41,11 @@ pub enum SubCmds {
     ScoreOptimizer {
         /// Number of teams to play in the soccer rounds.
         #[structopt(short = "t", long, required = true)]
-        num_teams: usize,
+        num_teams: u32,
 
-        /// Number of arbiters to rate.
+        /// Number of arbiters to rate and possibly get assigned to a match.
         #[structopt(short = "a", long, required = true)]
-        num_arbiters: usize,
+        num_arbiters: u32,
 
         /// Table of values with the rating given to the arbiters of the game.
         #[structopt(
@@ -53,15 +53,15 @@ pub enum SubCmds {
             long,
             parse(try_from_str = parse_row)
         )]
-        arbiters_prefs: Vec<Vec<isize>>,
+        arbiters_prefs: Vec<Vec<u32>>,
     },
 
     /// Play around with a rabbit to find the minimum number of jumps it has to perform
     /// to take itself from a paint `A` to a point `B` in a farm field.
-    JumpsOtimizer {
+    JumpsOptimizer {
         /// Size of the farm field where the rabbit will be jumping.
         ///
-        /// It is formed as follows: [-f | --field-size] `long/height`.
+        /// It is specified as follows: [-f | --field-size] `long/height`.
         #[structopt(
             short = "f",
             long,
@@ -72,7 +72,7 @@ pub enum SubCmds {
 
         /// Length of the jump made by the rabbit.
         ///
-        /// It is formed as follows: [-l | --jump-length] `lenght-x/lenght-y`.
+        /// It is specified as follows: [-l | --jump-length] `lenght-x/lenght-y`.
         #[structopt(
             short = "l",
             long,
@@ -80,10 +80,9 @@ pub enum SubCmds {
             parse(try_from_str = parse_key_value_pair)
         )]
         jump_length: (usize, usize),
-
         /// Coordinate of the starting point where the rabbit will start jumping.
         ///
-        /// It is formed as follows: [-s | --start-point] `x/y`.
+        /// It is specified as follows: [-s | --start-point] `x/y`.
         #[structopt(
             short = "s",
             long,
@@ -94,7 +93,7 @@ pub enum SubCmds {
 
         /// Coordinate of the target point where the rabbit will be arriving.
         ///
-        /// It is formed as follows: [-t | --target-point] `x/y`.
+        /// It is specified as follows: [-t | --target-point] `x/y`.
         #[structopt(
             short = "t",
             long,

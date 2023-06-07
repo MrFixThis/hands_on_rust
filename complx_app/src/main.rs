@@ -10,14 +10,14 @@ mod args;
 mod problems;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let args: TuiArgs = structopt::StructOpt::from_args();
-
+    let args = <TuiArgs as structopt::StructOpt>::from_args();
     match args.cmds {
         args::SubCmds::MenuOptimizer {
             target_calories,
-            dishes,
+            base_menu,
         } => {
-            todo!()
+            let mor = MenuOptimizer::new().find_optimal_menu(target_calories, base_menu);
+            report!(mor);
         }
         args::SubCmds::ScoreOptimizer {
             num_teams,
@@ -26,13 +26,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         } => {
             todo!()
         }
-        args::SubCmds::JumpsOtimizer {
+        args::SubCmds::JumpsOptimizer {
             field_size,
             jump_length,
             start_point,
             target_point,
         } => {
-            todo!()
+            let jor = JumpOptimizer::new(field_size, jump_length)
+                    .find_min_jumps(start_point, target_point)?;
+            report!(jor);
         }
     }
+
+    Ok(())
 }
