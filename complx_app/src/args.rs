@@ -31,7 +31,7 @@ pub enum SubCmds {
             long,
             required = true,
             parse(try_from_str = parse_key_value_pair),
-            min_values  = 2
+            min_values = 2
         )]
         base_menu: Vec<(String, u32)>,
     },
@@ -39,21 +39,15 @@ pub enum SubCmds {
     /// Determines the most prefered arbiters by an `N` number of teams and assigned to an `M (N/2)`
     /// number of soccer matches.
     ScoreOptimizer {
-        /// Number of teams to play in the soccer rounds.
-        #[structopt(short = "t", long, required = true)]
-        num_teams: u32,
-
-        /// Number of arbiters to rate and possibly get assigned to a match.
-        #[structopt(short = "a", long, required = true)]
-        num_arbiters: u32,
-
         /// Table of values with the rating given to the arbiters of the game.
         #[structopt(
             short = "p",
             long,
-            parse(try_from_str = parse_row)
+            required = true,
+            parse(try_from_str = parse_row),
+            min_values = 2
         )]
-        arbiters_prefs: Vec<Vec<u32>>,
+        preferences: Vec<Vec<isize>>,
     },
 
     /// Play around with a rabbit to find the minimum number of jumps it has to perform

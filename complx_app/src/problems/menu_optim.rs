@@ -13,7 +13,7 @@ impl Report for MenuOptimizer<Ready> {
     fn report(&self) -> String {
         match self.optimal_menu {
             Some(ref menu) => {
-                let mut dishes = String::with_capacity(menu.len());
+                let mut dishes = String::new();
                 let total_cals: u32 = menu.iter().map(|&(_, c)| c).sum();
 
                 dishes.push_str("> Optimal menu found:\n");

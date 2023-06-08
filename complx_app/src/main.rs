@@ -1,3 +1,5 @@
+#![feature(iter_intersperse)]
+
 use std::error::Error;
 
 use args::TuiArgs;
@@ -19,12 +21,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             let mor = MenuOptimizer::new().find_optimal_menu(target_calories, base_menu);
             report!(mor);
         }
-        args::SubCmds::ScoreOptimizer {
-            num_teams,
-            num_arbiters,
-            arbiters_prefs,
-        } => {
-            todo!()
+        args::SubCmds::ScoreOptimizer { preferences } => {
+            let sor = ScoreOptimizer::build(preferences)?.find_optimal_assigment();
+            report!(sor);
         }
         args::SubCmds::JumpsOptimizer {
             field_size,
@@ -33,7 +32,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             target_point,
         } => {
             let jor = JumpOptimizer::new(field_size, jump_length)
-                    .find_min_jumps(start_point, target_point)?;
+                .find_min_jumps(start_point, target_point)?;
             report!(jor);
         }
     }

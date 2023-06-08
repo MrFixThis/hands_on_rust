@@ -18,7 +18,7 @@ impl Report for JumpOptimizer<Ready> {
                 format!(
                     "> The minimum number of jumps done to go from point `A` to point `B` is {jumps}.",
                 )
-            },
+            }
             None => "> It was not possible to get from point `A` to point `B`.".to_owned(),
         }
     }
@@ -70,7 +70,8 @@ impl JumpOptimizer {
     ) {
         // if destination reached
         if current_point.0 == target_point.0 && current_point.1 == target_point.1 {
-            self.min_jums.replace(self.min_jums.map_or(curr_jums, |m| m.min(curr_jums)));
+            self.min_jums
+                .replace(self.min_jums.map_or(curr_jums, |m| m.min(curr_jums)));
             return;
         }
 
